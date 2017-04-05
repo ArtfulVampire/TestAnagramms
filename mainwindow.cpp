@@ -106,10 +106,12 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->setupUi(this);
 
 	/// used for output file only
-	dirPath = "/home/michael/Qt/Projects/TestAnagramms";
+//	dirPath = "/home/michael/Qt/Projects/TestAnagramms";
+	dirPath = ".";
 
 	/// read words
-	answersArr = readWordsFile("/home/michael/Qt/Projects/TestAnagramms/answers.txt");
+//	answersArr = readWordsFile("/home/michael/Qt/Projects/TestAnagramms/answers.txt");
+	answersArr = answers;
 
 	/// shuffle words
 	std::shuffle(std::begin(answersArr),

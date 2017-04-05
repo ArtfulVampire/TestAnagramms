@@ -23,6 +23,7 @@
 #include <chrono>
 #include <vector>
 #include <valarray>
+#include "answers.h"
 
 using namespace std;
 
