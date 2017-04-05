@@ -1,5 +1,19 @@
 #include "answers.h"
 
+#if 1
+std::vector<QString> answers
+{
+    "рыцарь",
+    "щёлочь",
+    "телега",
+    "свинья",
+    "рюкзак",
+    "хоббит",
+    "янтарь",
+    "память",
+    "голова"
+};
+#else
 std::vector<QString> answers
 {
 	"апрель",
@@ -177,3 +191,4 @@ std::vector<QString> answers
 	"сельдь",
 	"вулкан"
 };
+#endif

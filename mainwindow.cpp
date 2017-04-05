@@ -121,19 +121,19 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	ui->nameLineEdit->setFocus();
 
-	name.clear();
+    time1.start();
 	counter = -1;
 
 	QObject::connect(this->ui->startPushButton, SIGNAL(clicked()), this, SLOT(newTest()));
 	QObject::connect(this->ui->answerLineEdit, SIGNAL(returnPressed()), this, SLOT(nextPic()));
-	QObject::connect(this->ui->nameLineEdit, SIGNAL(returnPressed()), this, SLOT(setName()));
+//	QObject::connect(this->ui->nameLineEdit, SIGNAL(returnPressed()), this, SLOT(setName()));
 	QObject::connect(this->ui->stopPushButton, SIGNAL(clicked()), this, SLOT(stop()));
 	QObject::connect(this->ui->skipPushButton, SIGNAL(clicked()), this, SLOT(skip()));
 }
 
 void MainWindow::setName()
 {
-	name = ui->nameLineEdit->text();
+//    name = ui->nameLineEdit->text();
 	ui->nameLineEdit->clear();
 	ui->nameLineEdit->hide();
 	ui->label->hide();
@@ -165,7 +165,7 @@ void MainWindow::newPic()
 	this->ui->picLabel->setPixmap(drawWord(mixedWord).
 			scaled(this->ui->picLabel->size()));
 
-	time1.start();
+    time1.restart();
 	ui->answerLineEdit->clear();
 	ui->answerLineEdit->setFocus();
 }
@@ -175,61 +175,78 @@ void MainWindow::increment(const QString & message)
 	++counter;
 	if(counter == answersArr.size())
 	{
-		outStr.close();
+//		outStr.close();
+        outFile.close();
 		this->ui->picLabel->clear();
 		QMessageBox::information((QWidget*)this,
 								 tr("The End"),
-								 message, QMessageBox::Ok);
-		return;
+                                 message, QMessageBox::Ok);
+        this->close();
+        return;
 	}
+    else if(counter % 5 == 0)
+    {
+        QMessageBox::information(this, tr("Pause"), tr("You,ve passed 5 anagrams in a row\nIt's a pause time now\nPress OK when ready to continue."), QMessageBox::Ok );
+    }
+    newPic();
 }
 
 void MainWindow::newTest()
 {
-	if(name.isEmpty())
+    QString guyName = ui->nameLineEdit->text();
+    if(guyName.isEmpty())
 	{
+        ui->nameLineEdit->setText("Enter your name!");
+        QTimer::singleShot(1000, ui->nameLineEdit, SLOT(clear()));
 		return;
 	}
 
-	QString helpString = dirPath + "/" + name + ".txt";
+    ui->nameLineEdit->hide();
+    ui->label->hide();
+    ui->startPushButton->setFocus();
 
-	outStr.open(helpString.toStdString());
+    QString helpString = dirPath + "/" + guyName + ".txt";
+    outFile.setFileName(helpString);
+    outFile.open(QIODevice::WriteOnly);
+    outStream.setDevice(&outFile);
+
+//	outStr.open(helpString.toStdString());
 
 	counter = 0;
-	newPic();
-
+    newPic();
 }
 
 void MainWindow::nextPic()
 {
 	if(ui->answerLineEdit->text() != answersArr[counter])
 	{
+        outStream
+                << mixedWord << "\t"
+                << answersArr[counter] << "\t"
+                << ui->answerLineEdit->text() << "\t"
+                << time1.elapsed() / 1000. << "\t"
+                << "\r\n";
+
 		ui->answerLineEdit->setText("W R O N G");
-		QTimer::singleShot(500, ui->answerLineEdit, SLOT(clear()));
+        QTimer::singleShot(300, ui->answerLineEdit, SLOT(clear()));
 		return;
 	}
 
-	outStr
+    outStream
 			<< mixedWord << "\t"
 			<< answersArr[counter] << "\t"
-			<< time1.elapsed()/1000. << "\t"
-			<< std::endl;
+            << time1.elapsed() / 1000. << "\t"
+            << "\r\n";
 
 	increment("Thank you!");
-
-	if(counter % 10 == 0)
-	{
-		QMessageBox::information(this, tr("Pause"), tr("You,ve solved 10 anagrams in a row\nIt's a pause time now\nPress OK when ready to continue."), QMessageBox::Ok );
-	}
-
-	newPic();
 }
 
 void MainWindow::stop()
 {
 	counter = -1;
 
-	outStr.close();
+//	outStr.close();
+    outFile.close();
 	this->ui->picLabel->clear();
 
 	QMessageBox::information((QWidget*)this, tr("The End"), tr("Stopped by user"), QMessageBox::Ok);
@@ -244,15 +261,14 @@ void MainWindow::mousePressEvent(QMouseEvent * ev)
 
 void MainWindow::skip()
 {
-	outStr
+    outStream
 			<< mixedWord << "\t"
 			<< answersArr[counter] << "\t"
 			<< time1.elapsed()/1000. << "\t"
 			<< "SKIPPED"
-			<< std::endl;
+            << "\r\n";
 
-	increment("Congratulations!");
-	newPic();
+    increment("Congratulations!");
 }
 
 

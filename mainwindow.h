@@ -15,6 +15,7 @@
 #include <QTimer>
 #include <QEvent>
 #include <QKeyEvent>
+#include <QTextStream>
 
 #include <iostream>
 #include <fstream>
@@ -58,12 +59,13 @@ private:
 	Ui::MainWindow *ui;
 	std::vector<QString> answersArr;
 	QString mixedWord;
-	QString dirPath;
-	QString name;
+    QString dirPath;
 	QTime time1;
 
 	int counter;
 	std::ofstream outStr;
+    QFile outFile;
+    QTextStream outStream;
 };
 
 #endif // MAINWINDOW_H
