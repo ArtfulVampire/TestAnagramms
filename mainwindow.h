@@ -13,6 +13,7 @@
 #include <QPainter>
 #include <QTime>
 #include <QTimer>
+#include <QThread>
 #include <QEvent>
 #include <QKeyEvent>
 #include <QTextStream>
@@ -24,6 +25,7 @@
 #include <chrono>
 #include <vector>
 #include <valarray>
+#include <thread>
 #include "answers.h"
 
 using namespace std;
@@ -42,7 +44,7 @@ public:
 
 public slots:
 	void nextPic();
-	void newTest();
+	void startTest();
 	void stop();
 	void skip();
 	void setName();
@@ -58,9 +60,11 @@ protected:
 private:
 	Ui::MainWindow *ui;
 	std::vector<QString> answersArr;
+	std::vector<int> mixNum;
 	QString mixedWord;
     QString dirPath;
 	QTime time1;
+	std::thread timerThread{};
 
 	int counter;
 	std::ofstream outStr;

@@ -113,22 +113,36 @@ MainWindow::MainWindow(QWidget *parent) :
 //	answersArr = readWordsFile("/home/michael/Qt/Projects/TestAnagramms/answers.txt");
 	answersArr = answers;
 
-	/// shuffle words
-	std::shuffle(std::begin(answersArr),
-				 std::end(answersArr),
+		/// shuffle words
+	mixNum.resize(answersArr.size());
+	std::iota(std::begin(mixNum),
+			  std::end(mixNum),
+			  0);
+	std::shuffle(std::begin(mixNum),
+				 std::end(mixNum),
 				 std::default_random_engine(
 					 std::chrono::system_clock::now().time_since_epoch().count()));
 
 	ui->nameLineEdit->setFocus();
+	ui->progressBar->setValue(0);
+
+	ui->currentLabel->setFont(QFont("Helvetica", 24));
+	ui->currentLabel->setText("0/" + QString::number(answersArr.size()));
 
     time1.start();
 	counter = -1;
 
-	QObject::connect(this->ui->startPushButton, SIGNAL(clicked()), this, SLOT(newTest()));
+	QObject::connect(this->ui->startPushButton, SIGNAL(clicked()), this, SLOT(startTest()));
 	QObject::connect(this->ui->answerLineEdit, SIGNAL(returnPressed()), this, SLOT(nextPic()));
-//	QObject::connect(this->ui->nameLineEdit, SIGNAL(returnPressed()), this, SLOT(setName()));
+	QObject::connect(this->ui->nameLineEdit, SIGNAL(returnPressed()), this, SLOT(startTest()));
 	QObject::connect(this->ui->stopPushButton, SIGNAL(clicked()), this, SLOT(stop()));
 	QObject::connect(this->ui->skipPushButton, SIGNAL(clicked()), this, SLOT(skip()));
+	QObject::connect(this->ui->timerCheckBox, &QCheckBox::clicked,
+					 [this](bool in)
+	{
+		ui->progressBar->setVisible(in);
+	});
+	ui->timerCheckBox->setChecked(true);
 }
 
 void MainWindow::setName()
@@ -160,14 +174,35 @@ void MainWindow::keyPressEvent(QKeyEvent * event)
 
 void MainWindow::newPic()
 {
-	mixedWord = mixWord(answersArr[counter]);
+	mixedWord = mixWord(answersArr[mixNum[counter]]);
+	ui->currentLabel->setText(QString::number(counter) + "/" + QString::number(answersArr.size()));
 
 	this->ui->picLabel->setPixmap(drawWord(mixedWord).
 			scaled(this->ui->picLabel->size()));
 
     time1.restart();
+	ui->progressBar->setValue(0);
 	ui->answerLineEdit->clear();
 	ui->answerLineEdit->setFocus();
+
+
+	timerThread = std::thread([this]()
+	{
+		int counterBC = counter;
+		double val = 0;
+		double solveTime = 50.;
+		while(counter == counterBC)
+		{
+			std::this_thread::sleep_for(std::chrono::seconds{1});
+			val += 100. / solveTime;
+			if(counter == counterBC)
+			{
+				this->ui->progressBar->setValue(val);
+			}
+		}
+	}
+	);
+	timerThread.detach();
 }
 
 void MainWindow::increment(const QString & message)
@@ -175,7 +210,6 @@ void MainWindow::increment(const QString & message)
 	++counter;
 	if(counter == answersArr.size())
 	{
-//		outStr.close();
         outFile.close();
 		this->ui->picLabel->clear();
 		QMessageBox::information((QWidget*)this,
@@ -185,13 +219,19 @@ void MainWindow::increment(const QString & message)
         return;
 	}
     else if(counter % 5 == 0)
-    {
-        QMessageBox::information(this, tr("Pause"), tr("You,ve passed 5 anagrams in a row\nIt's a pause time now\nPress OK when ready to continue."), QMessageBox::Ok );
+	{
+		ui->progressBar->setValue(0);
+		QMessageBox::information(this,
+								 tr("Pause"),
+								 tr("You,ve passed 5 anagrams in a row\n"
+									"It's a pause time now\n"
+									"Press OK when ready to continue."),
+								 QMessageBox::Ok);
     }
     newPic();
 }
 
-void MainWindow::newTest()
+void MainWindow::startTest()
 {
     QString guyName = ui->nameLineEdit->text();
     if(guyName.isEmpty())
@@ -208,9 +248,7 @@ void MainWindow::newTest()
     QString helpString = dirPath + "/" + guyName + ".txt";
     outFile.setFileName(helpString);
     outFile.open(QIODevice::WriteOnly);
-    outStream.setDevice(&outFile);
-
-//	outStr.open(helpString.toStdString());
+	outStream.setDevice(&outFile);
 
 	counter = 0;
     newPic();
@@ -218,27 +256,41 @@ void MainWindow::newTest()
 
 void MainWindow::nextPic()
 {
-	if(ui->answerLineEdit->text() != answersArr[counter])
+	if(ui->answerLineEdit->text() != answersArr[mixNum[counter]])
 	{
-        outStream
-                << mixedWord << "\t"
-                << answersArr[counter] << "\t"
-                << ui->answerLineEdit->text() << "\t"
-                << time1.elapsed() / 1000. << "\t"
+		outStream
+				<< "WRONG" << "\t"
+				<< ui->answerLineEdit->text() << "\t"
+				<< time1.elapsed() / 1000. << "\t"
+				<< mixNum[counter] << "\t"
                 << "\r\n";
 
 		ui->answerLineEdit->setText("W R O N G");
-        QTimer::singleShot(300, ui->answerLineEdit, SLOT(clear()));
-		return;
+		QTimer::singleShot(300, ui->answerLineEdit, SLOT(clear()));
 	}
+	else
+	{
+		outStream
+				<< "RIGHT" << "\t"
+				<< ui->answerLineEdit->text() << "\t"
+				<< time1.elapsed() / 1000. << "\t"
+				<< mixNum[counter] << "\t"
+				<< "\r\n";
 
-    outStream
-			<< mixedWord << "\t"
-			<< answersArr[counter] << "\t"
-            << time1.elapsed() / 1000. << "\t"
-            << "\r\n";
+		increment("Thank you!");
+	}
+}
 
-	increment("Thank you!");
+void MainWindow::skip()
+{
+	outStream
+			<< "SKIPD" << "\t"
+			<< answersArr[mixNum[counter]] << "\t"
+			<< time1.elapsed()/1000. << "\t"
+			<< mixNum[counter] << "\t"
+			<< "\r\n";
+
+	increment("Congratulations!");
 }
 
 void MainWindow::stop()
@@ -258,19 +310,6 @@ void MainWindow::mousePressEvent(QMouseEvent * ev)
 {
 	ui->answerLineEdit->setFocus();
 }
-
-void MainWindow::skip()
-{
-    outStream
-			<< mixedWord << "\t"
-			<< answersArr[counter] << "\t"
-			<< time1.elapsed()/1000. << "\t"
-			<< "SKIPPED"
-            << "\r\n";
-
-    increment("Congratulations!");
-}
-
 
 MainWindow::~MainWindow()
 {
