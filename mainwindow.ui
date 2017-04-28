@@ -27,7 +27,7 @@
      <string>TextLabel</string>
     </property>
    </widget>
-   <widget class="QWidget" name="">
+   <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
       <x>670</x>
@@ -37,39 +37,14 @@
      </rect>
     </property>
     <layout class="QGridLayout" name="gridLayout">
-     <item row="8" column="0">
-      <widget class="QCheckBox" name="timerCheckBox">
-       <property name="text">
-        <string>show timer</string>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="1">
-      <widget class="QPushButton" name="skipPushButton">
-       <property name="text">
-        <string>sk&amp;ip</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0" colspan="2">
-      <widget class="QLabel" name="label">
-       <property name="text">
-        <string>write down your name
-and press Enter</string>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="0">
+     <item row="3" column="0">
       <widget class="QPushButton" name="stopPushButton">
        <property name="text">
         <string>st&amp;op</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="0" colspan="2">
-      <widget class="QLineEdit" name="nameLineEdit"/>
-     </item>
-     <item row="6" column="0" colspan="2">
+     <item row="4" column="0" colspan="2">
       <widget class="QLabel" name="currentLabel">
        <property name="text">
         <string>TextLabel</string>
@@ -77,26 +52,40 @@ and press Enter</string>
       </widget>
      </item>
      <item row="2" column="0" colspan="2">
+      <widget class="QLineEdit" name="answerLineEdit"/>
+     </item>
+     <item row="0" column="0" colspan="2">
       <widget class="QPushButton" name="startPushButton">
        <property name="text">
         <string>Start test</string>
        </property>
       </widget>
      </item>
-     <item row="3" column="0" colspan="2">
+     <item row="5" column="0" colspan="2">
+      <widget class="QProgressBar" name="progressBar">
+       <property name="value">
+        <number>24</number>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0" colspan="2">
       <widget class="QLabel" name="label_2">
        <property name="text">
         <string>Write the answer and press Enter</string>
        </property>
       </widget>
      </item>
-     <item row="4" column="0" colspan="2">
-      <widget class="QLineEdit" name="answerLineEdit"/>
+     <item row="6" column="0">
+      <widget class="QCheckBox" name="timerCheckBox">
+       <property name="text">
+        <string>show timer</string>
+       </property>
+      </widget>
      </item>
-     <item row="7" column="0" colspan="2">
-      <widget class="QProgressBar" name="progressBar">
-       <property name="value">
-        <number>24</number>
+     <item row="3" column="1">
+      <widget class="QPushButton" name="skipPushButton">
+       <property name="text">
+        <string>sk&amp;ip</string>
        </property>
       </widget>
      </item>

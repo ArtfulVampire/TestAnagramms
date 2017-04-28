@@ -26,9 +26,9 @@
 #include <vector>
 #include <valarray>
 #include <thread>
-#include "answers.h"
+#include <set>
 
-using namespace std;
+#include "answers.h"
 
 namespace Ui {
 class MainWindow;
@@ -58,11 +58,23 @@ protected:
 	void keyPressEvent(QKeyEvent *);
 
 private:
+	static double hashFunc(const QString & answer,
+						   const QString & word,
+						   double time,
+						   int wordNum, int prevSiz);
+
+public:
+	static void testFileHash(const QString & filePath);
+
+private:
 	Ui::MainWindow *ui;
 	std::vector<QString> answersArr;
+	std::set<int> alreadyAnswered;
+	const QString answeredFileName{"answered.txt"};
+	const QString outFileName{"out.txt"};
 	std::vector<int> mixNum;
 	QString mixedWord;
-    QString dirPath;
+	QString dirPath{"."};
 	QTime time1;
 	std::thread timerThread{};
 

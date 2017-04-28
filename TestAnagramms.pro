@@ -10,7 +10,7 @@ TARGET = TestAnagramms
 TEMPLATE = app
 QMAKE_CXXFLAGS += -std=c++1z
 
-QMAKE_LFLAGS_RELEASE += -static -static-libgcc
+#QMAKE_LFLAGS_RELEASE += -static -static-libgcc
 
 
 

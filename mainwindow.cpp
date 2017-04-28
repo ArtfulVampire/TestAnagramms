@@ -1,10 +1,28 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-ostream & operator << (ostream & os, const QString & str)
+std::ostream & operator << (std::ostream & os, const QString & str)
 {
 	os << str.toStdString();
 	return os;
+}
+
+
+
+std::set<int> readAnsweredFile(const QString & filePath)
+{
+	if(!QFile::exists(filePath)) return {};
+
+	std::set<int> res;
+	std::ifstream fil;
+	fil.open(filePath.toStdString());
+	int tmp;
+	while(fil >> tmp)
+	{
+		res.emplace(tmp);
+	}
+	fil.close();
+	return res;
 }
 
 std::vector<QString> readWordsFile(const QString & filePath)
@@ -43,23 +61,21 @@ QString mixWord(const QString & inWord)
 					 std::end(mixNum),
 					 std::default_random_engine(
 						 std::chrono::system_clock::now().time_since_epoch().count()));
-		auto nexts = mixNum.cshift(1) - mixNum; /// 1 if next letter is from right order
-		auto prevs = mixNum - mixNum.cshift(-1); /// 1 if prev letter is from right order
+
+		/// 1 if next letter is from right order
+		/// -1 if prev
+		decltype(mixNum) nexts = mixNum.cshift(1) - mixNum;
 
 		num = 0;
 		for(int i = 0; i < mixNum.size() - 1; ++i)
 		{
-			if(nexts[i] == 1) { num += 1; }
-			if(prevs[i + 1] == 1) { num += 1; }
+			if(std::abs(nexts[i]) == 1) { num += 1; }
 		}
 
 		if(mixNum[0] == 0 || mixNum[mixNum.size() - 1] == mixNum.size() - 1)
 		{
 			num += 10;
 		}
-
-
-
 	} while (num > 0);
 
 	QString res = inWord;
@@ -113,28 +129,37 @@ MainWindow::MainWindow(QWidget *parent) :
 //	answersArr = readWordsFile("/home/michael/Qt/Projects/TestAnagramms/answers.txt");
 	answersArr = answers;
 
-		/// shuffle words
-	mixNum.resize(answersArr.size());
-	std::iota(std::begin(mixNum),
-			  std::end(mixNum),
-			  0);
+	/// make indices array - allow for already answered
+	alreadyAnswered = readAnsweredFile(dirPath + "/" + answeredFileName);
+
+	mixNum.clear();
+	for(int i = 0; i < answersArr.size(); ++i)
+	{
+		if(alreadyAnswered.count(i) == 0)
+		{
+			mixNum.push_back(i);
+		}
+	}
+
+
+	/// shuffle words
 	std::shuffle(std::begin(mixNum),
 				 std::end(mixNum),
 				 std::default_random_engine(
 					 std::chrono::system_clock::now().time_since_epoch().count()));
 
-	ui->nameLineEdit->setFocus();
+//	ui->nameLineEdit->setFocus();
 	ui->progressBar->setValue(0);
 
 	ui->currentLabel->setFont(QFont("Helvetica", 24));
-	ui->currentLabel->setText("0/" + QString::number(answersArr.size()));
+	ui->currentLabel->setText("0/" + QString::number(mixNum.size()));
 
     time1.start();
 	counter = -1;
 
 	QObject::connect(this->ui->startPushButton, SIGNAL(clicked()), this, SLOT(startTest()));
 	QObject::connect(this->ui->answerLineEdit, SIGNAL(returnPressed()), this, SLOT(nextPic()));
-	QObject::connect(this->ui->nameLineEdit, SIGNAL(returnPressed()), this, SLOT(startTest()));
+//	QObject::connect(this->ui->nameLineEdit, SIGNAL(returnPressed()), this, SLOT(startTest()));
 	QObject::connect(this->ui->stopPushButton, SIGNAL(clicked()), this, SLOT(stop()));
 	QObject::connect(this->ui->skipPushButton, SIGNAL(clicked()), this, SLOT(skip()));
 	QObject::connect(this->ui->timerCheckBox, &QCheckBox::clicked,
@@ -145,13 +170,75 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->timerCheckBox->setChecked(true);
 }
 
+void MainWindow::testFileHash(const QString & filePath)
+{
+	if(!QFile::exists(filePath))
+	{
+		std::cout << "File doesn't exist" << std::endl;
+		return;
+	}
+
+	QFile fil(filePath);
+	fil.open(QIODevice::ReadOnly);
+	QTextStream str(&fil);
+
+	QString answer;
+	QString word;
+	double time;
+	int num;
+	double hash;
+	int lineNum = 0;
+
+	while(1)
+	{
+		str >> answer >> word >> time >> num >> hash;
+
+
+		if(!str.atEnd())
+		{
+			double shouldHash = hashFunc(answer, word, time, num, 0);
+			std::cout << answer << "\t"
+					  << word << "\t"
+					  << time << "\t"
+					  << num << "\t"
+					  << hash << "\t"
+					  << shouldHash
+					  << std::endl;
+			if(std::abs(hash - shouldHash) > 0.001)
+			{
+				std::cout << "hash error in line " << lineNum << std::endl;
+			}
+		}
+		else { break; }
+
+		if(answer != "WRONG") { ++lineNum; }
+	}
+	fil.close();
+}
+
+double MainWindow::hashFunc(const QString & answer,
+							const QString & word,
+							double time,
+							int wordNum,
+							int prevSiz)
+{
+	static int num = 0;
+	double res = int(answer[0].toLower().toLatin1())
+			+ int(word.toStdString()[1])
+			+ std::pow(time, 2.5) / 3.5
+			+ (wordNum % 7) * (wordNum % 5)
+			+ num + prevSiz;
+	if(answer != "WRONG") { ++num; }
+	return res;
+}
+
 void MainWindow::setName()
 {
 //    name = ui->nameLineEdit->text();
-	ui->nameLineEdit->clear();
-	ui->nameLineEdit->hide();
-	ui->label->hide();
-	ui->startPushButton->setFocus();
+//	ui->nameLineEdit->clear();
+//	ui->nameLineEdit->hide();
+//	ui->label->hide();
+//	ui->startPushButton->setFocus();
 }
 
 void MainWindow::keyPressEvent(QKeyEvent * event)
@@ -175,7 +262,7 @@ void MainWindow::keyPressEvent(QKeyEvent * event)
 void MainWindow::newPic()
 {
 	mixedWord = mixWord(answersArr[mixNum[counter]]);
-	ui->currentLabel->setText(QString::number(counter) + "/" + QString::number(answersArr.size()));
+	ui->currentLabel->setText(QString::number(counter) + "/" + QString::number(mixNum.size()));
 
 	this->ui->picLabel->setPixmap(drawWord(mixedWord).
 			scaled(this->ui->picLabel->size()));
@@ -207,8 +294,15 @@ void MainWindow::newPic()
 
 void MainWindow::increment(const QString & message)
 {
+	/// write number into alreadyAnsweredFile
+	std::ofstream fil;
+	fil.open((dirPath + "/" + answeredFileName).toStdString(), std::ios_base::app);
+	fil << mixNum[counter] << "\r\n"; fil.flush();
+	fil.close();
+
+
 	++counter;
-	if(counter == answersArr.size())
+	if(counter == mixNum.size())
 	{
         outFile.close();
 		this->ui->picLabel->clear();
@@ -233,21 +327,21 @@ void MainWindow::increment(const QString & message)
 
 void MainWindow::startTest()
 {
-    QString guyName = ui->nameLineEdit->text();
-    if(guyName.isEmpty())
-	{
-        ui->nameLineEdit->setText("Enter your name!");
-        QTimer::singleShot(1000, ui->nameLineEdit, SLOT(clear()));
-		return;
-	}
+//    QString guyName = ui->nameLineEdit->text();
+//    if(guyName.isEmpty())
+//	{
+//        ui->nameLineEdit->setText("Enter your name!");
+//        QTimer::singleShot(1000, ui->nameLineEdit, SLOT(clear()));
+//		return;
+//	}
 
-    ui->nameLineEdit->hide();
-    ui->label->hide();
-    ui->startPushButton->setFocus();
+//    ui->nameLineEdit->hide();
+//    ui->label->hide();
+//    ui->startPushButton->setFocus();
 
-    QString helpString = dirPath + "/" + guyName + ".txt";
+	QString helpString = dirPath + "/" + outFileName;
     outFile.setFileName(helpString);
-    outFile.open(QIODevice::WriteOnly);
+	outFile.open(QIODevice::WriteOnly|QIODevice::Append);
 	outStream.setDevice(&outFile);
 
 	counter = 0;
@@ -256,26 +350,41 @@ void MainWindow::startTest()
 
 void MainWindow::nextPic()
 {
-	if(ui->answerLineEdit->text() != answersArr[mixNum[counter]])
+	QString toProcess = ui->answerLineEdit->text();
+	toProcess.remove(QRegExp("\\s"));
+	if(toProcess != answersArr[mixNum[counter]])
 	{
+		if(toProcess.isEmpty() || toProcess == "WRONG")
+		{
+			toProcess = "нетотв";
+		}
+		double tim = time1.elapsed() / 1000.;
 		outStream
 				<< "WRONG" << "\t"
-				<< ui->answerLineEdit->text() << "\t"
-				<< time1.elapsed() / 1000. << "\t"
+				<< toProcess << "\t"
+				<< tim << "\t"
 				<< mixNum[counter] << "\t"
+				<< hashFunc("WRONG", toProcess, tim,
+							mixNum[counter], alreadyAnswered.size()) << "\t"
                 << "\r\n";
+		outStream.flush();
 
 		ui->answerLineEdit->setText("W R O N G");
 		QTimer::singleShot(300, ui->answerLineEdit, SLOT(clear()));
 	}
 	else
 	{
+
+		double tim = time1.elapsed() / 1000.;
 		outStream
 				<< "RIGHT" << "\t"
-				<< ui->answerLineEdit->text() << "\t"
-				<< time1.elapsed() / 1000. << "\t"
+				<< toProcess << "\t"
+				<< tim << "\t"
 				<< mixNum[counter] << "\t"
+				<< hashFunc("RIGHT", toProcess, tim,
+							mixNum[counter], alreadyAnswered.size()) << "\t"
 				<< "\r\n";
+		outStream.flush();
 
 		increment("Thank you!");
 	}
@@ -283,12 +392,16 @@ void MainWindow::nextPic()
 
 void MainWindow::skip()
 {
+	double tim = time1.elapsed()/1000.;
 	outStream
 			<< "SKIPD" << "\t"
 			<< answersArr[mixNum[counter]] << "\t"
-			<< time1.elapsed()/1000. << "\t"
+			<< tim << "\t"
 			<< mixNum[counter] << "\t"
+			<< hashFunc("SKIPD", answersArr[mixNum[counter]], tim,
+						mixNum[counter], alreadyAnswered.size()) << "\t"
 			<< "\r\n";
+	outStream.flush();
 
 	increment("Congratulations!");
 }
@@ -304,6 +417,7 @@ void MainWindow::stop()
 	QMessageBox::information((QWidget*)this, tr("The End"), tr("Stopped by user"), QMessageBox::Ok);
 
 	ui->answerLineEdit->setFocus();
+	this->close();
 }
 
 void MainWindow::mousePressEvent(QMouseEvent * ev)
